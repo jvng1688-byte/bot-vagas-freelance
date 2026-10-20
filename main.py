@@ -2,7 +2,7 @@
 Bot Telegram - Vagas Freelance (Trampos + 99Freelas)
 Monitora vagas de desenvolvimento e envia alertas no Telegram.
 
-Stack: python-telegram-bot, Playwright, APScheduler, Railway (deploy gratis)
+Stack: python-telegram-bot, Playwright, APScheduler, Render (deploy gratis)
 """
 
 import os
@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import List, Dict
 
 import aiohttp
+from aiohttp import web
 from playwright.async_api import async_playwright
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes
@@ -316,8 +317,25 @@ def main():
 
     logger.info(f"Bot iniciado! Verificando a cada {CHECK_INTERVAL_MINUTES} minutos")
 
-    asyncio.get_event_loop().create_task(scheduled_check(application))
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    # Health check HTTP server for Render (port 8080)
+    async def health_check(request):
+        return web.Response(text="OK", status=200)
+
+    async def start_health_server():
+        app = web.Application()
+        app.router.add_get("/health", health_check)
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, "0.0.0.0", 8080)
+        await site.start()
+        logger.info("Health check server running on port 8080")
+
+    async def run_bot():
+        await start_health_server()
+        asyncio.get_event_loop().create_task(scheduled_check(application))
+        await application.run_polling(allowed_updates=Update.ALL_TYPES)
+
+    asyncio.run(run_bot())
 
 
 if __name__ == "__main__":
