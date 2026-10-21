@@ -332,9 +332,8 @@ def main():
 
     async def run_bot():
         await start_health_server()
-        await application.initialize()
-        await application.start()
-        await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+        # Run polling in background, health server stays alive
+        asyncio.create_task(application.run_polling(allowed_updates=Update.ALL_TYPES))
         
         # Keep running
         while True:
