@@ -332,8 +332,13 @@ def main():
 
     async def run_bot():
         await start_health_server()
-        asyncio.get_event_loop().create_task(scheduled_check(application))
-        await application.run_polling(allowed_updates=Update.ALL_TYPES)
+        await application.initialize()
+        await application.start()
+        await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+        
+        # Keep running
+        while True:
+            await asyncio.sleep(3600)
 
     asyncio.run(run_bot())
 
